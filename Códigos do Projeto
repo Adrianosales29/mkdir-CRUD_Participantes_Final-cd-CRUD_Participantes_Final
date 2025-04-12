@@ -1,0 +1,437 @@
+CRUD_Participantes_Final/
+├── index.php
+├── README.md
+├── css/
+│   └── style.css
+├── db/
+│   └── conexao.php
+├── includes/
+│   ├── header.php
+│   └── footer.php
+└── pages/
+    ├── criar_participante.php
+    ├── listar_participantes.php
+    ├── editar_participante.php
+    └── excluir_participante.php
+1. Arquivo: index.php
+php
+Copiar
+Editar
+<?php include 'includes/header.php'; ?>
+
+<div class="container">
+    <h1>Cadastro de Participantes</h1>
+    <div class="buttons">
+        <a href="pages/criar_participante.php" class="btn">Cadastrar Participante</a>
+        <a href="pages/listar_participantes.php" class="btn">Listar Participantes</a>
+    </div>
+</div>
+
+<?php include 'includes/footer.php'; ?>
+2. Arquivos na pasta includes/
+a) header.php
+php
+Copiar
+Editar
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>CRUD de Participantes</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <ul>
+                <li><a href="/index.php">Home</a></li>
+                <li><a href="/pages/criar_participante.php">Cadastrar</a></li>
+                <li><a href="/pages/listar_participantes.php">Listar</a></li>
+            </ul>
+        </nav>
+    </header>
+b) footer.php
+php
+Copiar
+Editar
+    <footer>
+        <p>&copy; <?php echo date('Y'); ?> - CRUD de Participantes</p>
+    </footer>
+</body>
+</html>
+3. Arquivo: db/conexao.php
+php
+Copiar
+Editar
+<?php
+$host = "localhost";
+$user = "root";
+$password = "";
+$dbname = "crud_participantes";
+
+// Cria a conexão
+$conn = new mysqli($host, $user, $password, $dbname);
+
+// Verifica a conexão
+if ($conn->connect_error) {
+    die("Conexão falhou: " . $conn->connect_error);
+}
+?>
+Observação:
+Crie o banco de dados crud_participantes e a tabela participantes usando o seguinte script SQL:
+
+sql
+Copiar
+Editar
+CREATE TABLE IF NOT EXISTS participantes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL
+);
+4. Arquivos na pasta pages/
+a) criar_participante.php
+php
+Copiar
+Editar
+<?php
+include '../db/conexao.php';
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $nome = $_POST['nome'];
+    $email = $_POST['email'];
+
+    // Validação básica dos campos
+    if (!empty($nome) && !empty($email)) {
+        // Usando prepared statements para prevenir SQL Injection
+        $stmt = $conn->prepare("INSERT INTO participantes (nome, email) VALUES (?, ?)");
+        $stmt->bind_param("ss", $nome, $email);
+        if ($stmt->execute()){
+            $mensagem = "Participante cadastrado com sucesso!";
+        } else {
+            $mensagem = "Erro ao cadastrar participante.";
+        }
+        $stmt->close();
+    } else {
+        $mensagem = "Preencha todos os campos.";
+    }
+}
+?>
+
+<?php include '../includes/header.php'; ?>
+
+<div class="container">
+    <h1>Cadastrar Participante</h1>
+
+    <?php if(isset($mensagem)) { echo "<p class='msg'>$mensagem</p>"; } ?>
+
+    <form method="POST" action="">
+        <label>Nome:</label>
+        <input type="text" name="nome" placeholder="Digite o nome" required>
+
+        <label>Email:</label>
+        <input type="email" name="email" placeholder="Digite o email" required>
+
+        <button type="submit" class="btn">Cadastrar</button>
+    </form>
+
+    <a href="../index.php" class="btn">Voltar</a>
+</div>
+
+<?php include '../includes/footer.php'; ?>
+b) listar_participantes.php
+php
+Copiar
+Editar
+<?php
+include '../db/conexao.php';
+
+$sql = "SELECT * FROM participantes";
+$result = $conn->query($sql);
+?>
+
+<?php include '../includes/header.php'; ?>
+
+<div class="container">
+    <h1>Lista de Participantes</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>Email</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php if($result && $result->num_rows > 0): ?>
+                <?php while($row = $result->fetch_assoc()): ?>
+                <tr>
+                    <td><?php echo $row['id']; ?></td>
+                    <td><?php echo $row['nome']; ?></td>
+                    <td><?php echo $row['email']; ?></td>
+                    <td>
+                        <a href="editar_participante.php?id=<?php echo $row['id']; ?>" class="btn small">Editar</a>
+                        <a href="excluir_participante.php?id=<?php echo $row['id']; ?>" onclick="return confirm('Tem certeza que deseja excluir?');" class="btn small red">Excluir</a>
+                    </td>
+                </tr>
+                <?php endwhile; ?>
+            <?php else: ?>
+                <tr>
+                    <td colspan="4">Nenhum participante encontrado.</td>
+                </tr>
+            <?php endif; ?>
+        </tbody>
+    </table>
+
+    <a href="../index.php" class="btn">Voltar</a>
+</div>
+
+<?php include '../includes/footer.php'; ?>
+c) editar_participante.php
+php
+Copiar
+Editar
+<?php
+include '../db/conexao.php';
+
+if (isset($_GET['id'])) {
+    $id = $_GET['id'];
+
+    // Busca os dados do participante para preencher o formulário
+    $stmt = $conn->prepare("SELECT nome, email FROM participantes WHERE id = ?");
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    $stmt->bind_result($nome, $email);
+    $stmt->fetch();
+    $stmt->close();
+} else {
+    header("Location: listar_participantes.php");
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $nome = $_POST['nome'];
+    $email = $_POST['email'];
+
+    // Atualiza os dados utilizando prepared statement
+    $stmt = $conn->prepare("UPDATE participantes SET nome = ?, email = ? WHERE id = ?");
+    $stmt->bind_param("ssi", $nome, $email, $id);
+
+    if($stmt->execute()){
+        $mensagem = "Participante atualizado com sucesso!";
+    } else {
+        $mensagem = "Erro ao atualizar participante.";
+    }
+    $stmt->close();
+}
+?>
+
+<?php include '../includes/header.php'; ?>
+
+<div class="container">
+    <h1>Editar Participante</h1>
+
+    <?php if(isset($mensagem)) { echo "<p class='msg'>$mensagem</p>"; } ?>
+
+    <form method="POST" action="">
+        <label>Nome:</label>
+        <input type="text" name="nome" value="<?php echo $nome; ?>" required>
+
+        <label>Email:</label>
+        <input type="email" name="email" value="<?php echo $email; ?>" required>
+
+        <button type="submit" class="btn">Atualizar</button>
+    </form>
+
+    <a href="listar_participantes.php" class="btn">Voltar</a>
+</div>
+
+<?php include '../includes/footer.php'; ?>
+d) excluir_participante.php
+php
+Copiar
+Editar
+<?php
+include '../db/conexao.php';
+
+if (isset($_GET['id'])) {
+    $id = $_GET['id'];
+
+    // Exclui o participante utilizando prepared statement
+    $stmt = $conn->prepare("DELETE FROM participantes WHERE id = ?");
+    $stmt->bind_param("i", $id);
+
+    if ($stmt->execute()){
+        $mensagem = "Participante excluído com sucesso!";
+    } else {
+        $mensagem = "Erro ao excluir participante.";
+    }
+    $stmt->close();
+
+    // Redireciona para a listagem com mensagem
+    header("Location: listar_participantes.php?msg=" . urlencode($mensagem));
+    exit;
+} else {
+    header("Location: listar_participantes.php");
+    exit;
+}
+?>
+5. Arquivo: css/style.css
+css
+Copiar
+Editar
+/* css/style.css */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    margin: 0;
+    padding: 0;
+}
+
+header {
+    background-color: #333;
+    padding: 10px 0;
+}
+
+header nav ul {
+    list-style: none;
+    text-align: center;
+    margin: 0;
+    padding: 0;
+}
+
+header nav ul li {
+    display: inline;
+    margin: 0 10px;
+}
+
+header nav ul li a {
+    color: #fff;
+    text-decoration: none;
+    font-size: 16px;
+}
+
+.container {
+    width: 90%;
+    max-width: 800px;
+    margin: 20px auto;
+    background: #fff;
+    padding: 20px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 20px;
+}
+
+form label {
+    display: block;
+    margin-bottom: 5px;
+    color: #333;
+}
+
+form input[type="text"],
+form input[type="email"],
+form input[type="password"] {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.btn {
+    display: inline-block;
+    background: #333;
+    color: #fff;
+    padding: 10px 15px;
+    text-decoration: none;
+    border-radius: 4px;
+    margin: 5px 0;
+}
+
+.btn:hover {
+    background: #555;
+}
+
+.btn.small {
+    padding: 5px 10px;
+    font-size: 14px;
+}
+
+.btn.red {
+    background: #d9534f;
+}
+
+.btn.red:hover {
+    background: #c9302c;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+table, th, td {
+    border: 1px solid #ddd;
+}
+
+th, td {
+    padding: 12px;
+    text-align: left;
+}
+
+tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.msg {
+    background: #e7f3fe;
+    border: 1px solid #2196F3;
+    padding: 10px;
+    color: #0c5460;
+    margin-bottom: 10px;
+}
+
+footer {
+    text-align: center;
+    padding: 10px 0;
+    background: #333;
+    color: #fff;
+    margin-top: 20px;
+}
+6. Arquivo: README.md
+markdown
+Copiar
+Editar
+# CRUD de Participantes
+
+Projeto de exemplo de um sistema CRUD para gerenciar participantes, usando PHP, MySQL, HTML e CSS.
+
+## Funcionalidades
+
+- Cadastrar participantes
+- Listar participantes
+- Editar participantes
+- Excluir participantes
+
+## Estrutura do Projeto
+
+- **index.php:** Página inicial com links para as funcionalidades.
+- **includes/:** Cabeçalho e rodapé reutilizáveis.
+- **pages/:** Páginas específicas do CRUD.
+- **db/:** Conexão com o banco de dados.
+- **css/:** Estilos do projeto.
+
+## Instalação
+
+1. Importe o script SQL para criar o banco de dados e a tabela `participantes`:
+   ```sql
+   CREATE TABLE IF NOT EXISTS participantes (
+       id INT AUTO_INCREMENT PRIMARY KEY,
+       nome VARCHAR(100) NOT NULL,
+       email VARCHAR(100) NOT NULL
+   );
